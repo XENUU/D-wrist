@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#060606">
+  <!-- Page privée : on demande aux moteurs de recherche de ne pas l'indexer -->
+  <meta name="robots" content="noindex, nofollow">
+  <title>Studio paroles — D-wrist</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+
+  <!-- On réutilise l'ambiance du site (fond, grain, vignettage, toast) -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin">
+
+  <div class="ambiance" aria-hidden="true">
+    <div class="light light--1"></div>
+    <div class="light light--2"></div>
+    <div class="light light--3"></div>
+    <div class="light light--4"></div>
+  </div>
+
+  <div class="adm" id="app" data-tab="text">
+
+    <!-- ===== En-tête : retour, titre, choix du morceau ===== -->
+    <header class="adm-top">
+      <a class="adm-icon-btn" href="index.html" aria-label="Retour au site">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </a>
+      <div class="adm-brand">
+        <span class="adm-kicker">D-wrist</span>
+        <h1 class="adm-title">Studio paroles</h1>
+      </div>
+      <label class="adm-select">
+        <span class="sr-only">Morceau</span>
+        <select id="trackSelect"></select>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
+      </label>
+    </header>
+
+    <!-- ===== Onglets : les 3 étapes ===== -->
+    <nav class="adm-tabs" role="tablist">
+      <button class="adm-tab is-active" type="button" role="tab" data-tab="text"><span class="adm-tab-n">1</span>Texte</button>
+      <button class="adm-tab" type="button" role="tab" data-tab="sync"><span class="adm-tab-n">2</span>Synchro</button>
+      <button class="adm-tab" type="button" role="tab" data-tab="save"><span class="adm-tab-n">3</span>Enregistrer</button>
+      <span class="adm-tabs-ind" aria-hidden="true"></span>
+    </nav>
+
+    <!-- Bandeau d'état du brouillon -->
+    <div class="adm-status" id="status" hidden>
+      <span id="statusText"></span>
+      <button class="adm-link" id="resetBtn" type="button">Revenir à la version du site</button>
+    </div>
+
+    <main class="adm-panes">
+
+      <!-- ===== 1. TEXTE ===== -->
+      <section class="pane is-active" data-pane="text">
+        <p class="pane-help">
+          Écris ou colle les paroles : <b>une ligne = une phrase</b>.
+          Laisse une <b>ligne vide</b> pour une pause instrumentale (♪).
+          Tout est sauvegardé automatiquement dans ce navigateur.
+        </p>
+        <textarea class="lyrics-editor" id="lyricsText" spellcheck="false"
+                  placeholder="Colle tes paroles ici…&#10;&#10;Première phrase&#10;Deuxième phrase&#10;&#10;Refrain…"></textarea>
+        <div class="pane-foot">
+          <span class="pane-meta" id="lineCount">0 ligne</span>
+          <button class="btn btn--primary" type="button" data-goto="sync">Passer à la synchro →</button>
+        </div>
+      </section>
+
+      <!-- ===== 2. SYNCHRO ===== -->
+      <section class="pane" data-pane="sync">
+        <div class="sync-help">
+          <p class="only-touch">Lance le son, puis appuie sur <b>TAP</b> pile au début de chaque ligne.</p>
+          <p class="only-desk">Lance le son, puis appuie sur <kbd>Espace</kbd> pile au début de chaque ligne.</p>
+          <div class="only-desk"><ul class="keys">
+            <li><kbd>Espace</kbd> caler la ligne</li>
+            <li><kbd>⌫</kbd> annuler la dernière</li>
+            <li><kbd>P</kbd> lecture / pause</li>
+            <li><kbd>←</kbd><kbd>→</kbd> ±2 s</li>
+            <li><kbd>↑</kbd><kbd>↓</kbd> choisir la ligne</li>
+          </ul></div>
+          <p class="sync-tip">Clique sur un temps pour réécouter depuis là · <b>−</b>/<b>+</b> pour ajuster de 0,1 s</p>
+        </div>
+        <ol class="rows" id="rows"></ol>
+        <p class="rows-empty" id="rowsEmpty" hidden>Commence par écrire les paroles dans l'onglet <b>1. Texte</b>.</p>
+      </section>
+
+      <!-- ===== 3. ENREGISTRER ===== -->
+      <section class="pane" data-pane="save">
+        <div class="save-summary" id="saveSummary"></div>
+        <div class="save-actions">
+          <button class="btn btn--primary btn--big" id="saveFileBtn" type="button">Enregistrer dans tracks.js</button>
+          <div class="save-secondary">
+            <button class="btn" id="copyBtn" type="button">Copier le LRC</button>
+            <button class="btn" id="downloadBtn" type="button">Télécharger .lrc</button>
+          </div>
+        </div>
+        <p class="save-note" id="saveNote"></p>
+        <p class="pane-label">Aperçu du code LRC</p>
+        <pre class="lrc-out" id="lrcOut"></pre>
+        <input type="file" id="fileInput" accept=".js,text/javascript" hidden>
+      </section>
+    </main>
+
+    <!-- ===== Lecteur ===== -->
+    <footer class="adm-transport">
+      <div class="tp-progress" id="tpProgress" role="slider" tabindex="0"
+           aria-label="Position de lecture" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="tp-rail"><div class="tp-fill" id="tpFill"></div></div>
+        <div class="tp-marks" id="tpMarks" aria-hidden="true"></div>
+        <div class="tp-thumb-wrap" id="tpThumb"><span class="tp-thumb"></span></div>
+      </div>
+      <div class="tp-row">
+        <span class="tp-time"><span id="tpTime">0:00.00</span><span class="tp-total" id="tpTotal"> / 0:00</span></span>
+        <div class="tp-btns">
+          <button class="tp-btn" id="rewBtn" type="button" aria-label="Reculer de 2 secondes">−2s</button>
+          <button class="tp-btn tp-btn--play" id="playBtn" type="button" aria-label="Lecture">
+            <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8a1 1 0 0 0 1.53.85l10.2-6.4a1 1 0 0 0 0-1.7L9.53 4.75A1 1 0 0 0 8 5.6z"/></svg>
+            <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4.2" height="14" rx="1.2"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.2"/></svg>
+          </button>
+          <button class="tp-btn" id="fwdBtn" type="button" aria-label="Avancer de 2 secondes">+2s</button>
+        </div>
+        <button class="tp-speed" id="speedBtn" type="button" aria-label="Vitesse de lecture">1×</button>
+      </div>
+      <!-- Gros bouton de calage (onglet Synchro uniquement) -->
+      <button class="tap" id="tapBtn" type="button">
+        <span class="tap-label">TAP</span>
+        <span class="tap-next" id="tapNext"></span>
+      </button>
+    </footer>
+  </div>
+
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <audio id="audio" preload="metadata"></audio>
+
+  <script src="tracks.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

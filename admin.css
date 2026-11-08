@@ -1,0 +1,632 @@
+/* ==========================================================================
+   D-wrist — Studio paroles (admin)
+   S'appuie sur style.css (variables, fond, grain, toast) et ajoute
+   uniquement ce qui est propre à l'éditeur.
+   ========================================================================== */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Le body du site est figé (position: fixed) : l'admin est donc une
+   « app » plein écran avec des zones qui défilent à l'intérieur. */
+.adm {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: var(--safe-t) var(--safe-r) var(--safe-b) var(--safe-l);
+}
+
+/* ---------- En-tête ---------- */
+.adm-top {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 10px;
+}
+
+.adm-icon-btn {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  transition: transform 0.4s var(--ease);
+}
+.adm-icon-btn:active { transform: scale(0.88); }
+.adm-icon-btn svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.adm-brand { flex: 1; min-width: 0; }
+.adm-kicker {
+  display: block;
+  font-family: var(--font-goth);
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--muted);
+}
+.adm-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.adm-select {
+  position: relative;
+  flex-shrink: 1;
+  min-width: 0;
+}
+.adm-select select {
+  max-width: 46vw;
+  height: 40px;
+  padding: 0 34px 0 14px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  appearance: none;
+  -webkit-appearance: none;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.adm-select select option { color: #000; }
+.adm-select svg {
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  fill: none;
+  stroke: var(--fg-soft);
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+/* ---------- Onglets ---------- */
+.adm-tabs {
+  position: relative;
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 4px 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.adm-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color 0.35s var(--ease);
+}
+.adm-tab.is-active { color: var(--fg); }
+
+.adm-tab-n {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.adm-tab.is-active .adm-tab-n { color: #000; background: var(--fg); box-shadow: none; }
+
+/* Trait sous l'onglet actif, déplacé en transform */
+.adm-tabs-ind {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: calc(100% / 3);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fff 20%, #fff 80%, transparent);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+  transition: transform 0.55s var(--ease);
+}
+.adm[data-tab="sync"] .adm-tabs-ind { transform: translateX(100%); }
+.adm[data-tab="save"] .adm-tabs-ind { transform: translateX(200%); }
+
+/* ---------- Bandeau brouillon ---------- */
+.adm-status {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 10px 16px 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  color: var(--fg-soft);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.adm-link {
+  font-size: 0.78rem;
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- Panneaux ---------- */
+.adm-panes {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.pane {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition:
+    opacity 0.4s var(--ease),
+    transform 0.55s var(--ease),
+    visibility 0s linear 0.4s;
+}
+.pane.is-active {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 0.45s var(--ease),
+    transform 0.6s var(--ease),
+    visibility 0s;
+}
+
+.pane-help,
+.sync-help {
+  flex-shrink: 0;
+  margin-bottom: 12px;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--fg-soft);
+}
+.pane-help b,
+.sync-help b { color: var(--fg); font-weight: 600; }
+
+.pane-foot {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+}
+.pane-meta { font-size: 0.78rem; color: var(--muted); }
+.pane-label {
+  margin: 18px 0 8px;
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- Boutons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  transition: transform 0.4s var(--ease), opacity 0.3s var(--ease);
+}
+.btn:active { transform: scale(0.95); }
+.btn--primary {
+  color: #0a0a0a;
+  background: linear-gradient(180deg, #ffffff 0%, #dcdcdc 48%, #a8a8a8 52%, #efefef 100%);
+  box-shadow: 0 0 22px rgba(255, 255, 255, 0.18), inset 0 1px 0 #fff;
+}
+.btn--big { width: 100%; min-height: 54px; font-size: 1rem; }
+
+/* ---------- 1. Éditeur de texte ---------- */
+.lyrics-editor {
+  flex: 1;
+  min-height: 220px;
+  width: 100%;
+  padding: 16px 18px;
+  border: 0;
+  border-radius: 14px;
+  resize: none;
+  font: inherit;
+  font-size: 1.02rem;
+  line-height: 1.75;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  -webkit-user-select: text;
+  user-select: text;
+  transition: box-shadow 0.3s var(--ease);
+}
+.lyrics-editor:focus { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); }
+.lyrics-editor::placeholder { color: var(--faint); }
+
+/* ---------- 2. Synchro ---------- */
+.only-desk { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .only-desk { display: block; }
+  .only-touch { display: none; }
+}
+
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 8px 0 4px;
+  list-style: none;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+kbd {
+  display: inline-block;
+  min-width: 22px;
+  margin-right: 4px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.sync-tip { margin-top: 6px; font-size: 0.74rem; color: var(--muted); }
+
+/* Dans l'onglet Synchro, l'aide reste en haut : seule la liste défile */
+.pane[data-pane="sync"] { overflow: hidden; padding-bottom: 0; }
+
+.rows {
+  position: relative;            /* référence pour offsetTop des lignes */
+  flex: 1;
+  min-height: 0;
+  margin: 0 -8px;
+  padding: 10px 8px 40vh;        /* le bas vide permet de centrer les dernières lignes */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 85%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 85%, transparent 100%);
+}
+.rows::-webkit-scrollbar { display: none; }
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 86px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px 7px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* Fond de la ligne « à caler » (opacity uniquement) */
+.row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 2px 0 0 #fff;
+  opacity: 0;
+  transition: opacity 0.35s var(--ease);
+  pointer-events: none;
+}
+.row.is-cursor::before { opacity: 1; }
+
+.row-time {
+  position: relative;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  color: var(--faint);
+  transition: background-color 0.2s;
+}
+.row.is-stamped .row-time { color: var(--fg-soft); }
+.row-time:hover { background: rgba(255, 255, 255, 0.08); }
+/* Temps plus petit que la ligne précédente → à vérifier */
+.row.is-warn .row-time { color: var(--fg); outline: 1px dashed rgba(255, 255, 255, 0.6); outline-offset: -1px; }
+
+.row-text {
+  position: relative;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--fg);
+  opacity: 0.5;
+  transform-origin: 0 50%;
+  transition: opacity 0.35s var(--ease), transform 0.45s var(--ease);
+}
+.row.is-gap .row-text { letter-spacing: 0.2em; }
+.row.is-cursor .row-text { opacity: 0.85; }
+/* Ligne en train d'être chantée (aperçu en direct) */
+.row.is-playing .row-text {
+  opacity: 1;
+  transform: scale(1.04);
+  text-shadow: 0 0 18px rgba(255, 255, 255, 0.35);
+}
+
+.row-nudge {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.25s var(--ease);
+}
+.row.is-stamped .row-nudge { opacity: 0.55; }
+.row.is-stamped:hover .row-nudge,
+.row.is-cursor .row-nudge { opacity: 1; }
+.row:not(.is-stamped) .row-nudge { pointer-events: none; }
+.row-nudge button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--fg-soft);
+  background: rgba(255, 255, 255, 0.06);
+}
+.row-nudge button:active { transform: scale(0.88); }
+
+/* Éclair blanc au moment du TAP */
+.row-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rows-empty {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* ---------- 3. Enregistrer ---------- */
+.save-summary {
+  margin-bottom: 14px;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--fg-soft);
+}
+.save-summary b { color: var(--fg); }
+
+.save-actions { display: flex; flex-direction: column; gap: 10px; }
+.save-secondary { display: flex; gap: 10px; }
+.save-secondary .btn { flex: 1; }
+
+.save-note {
+  margin-top: 12px;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.save-note:empty { display: none; }
+
+.lrc-out {
+  flex-shrink: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  overflow-x: auto;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  white-space: pre;
+  color: var(--fg-soft);
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* ---------- Lecteur ---------- */
+.adm-transport {
+  flex-shrink: 0;
+  padding: 10px 16px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(to bottom, rgba(6, 6, 6, 0), rgba(6, 6, 6, 0.6));
+}
+
+.tp-progress {
+  position: relative;
+  height: 22px;
+  cursor: pointer;
+  touch-action: none;
+}
+.tp-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 4px;
+  margin-top: -2px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.tp-fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #8a8a8a, #fff);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+/* Petits repères = lignes déjà calées */
+.tp-marks { position: absolute; inset: 0; pointer-events: none; }
+.tp-mark {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 10px;
+  margin: -5px 0 0 -1px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.55);
+}
+.tp-thumb-wrap { position: absolute; inset: 0; pointer-events: none; }
+.tp-thumb {
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.55);
+}
+
+.tp-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-top: 6px;
+}
+.tp-time {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+.tp-total { color: var(--muted); }
+
+.tp-btns { display: flex; align-items: center; gap: 14px; }
+.tp-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  height: 40px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--fg-soft);
+  transition: transform 0.4s var(--ease);
+}
+.tp-btn:active { transform: scale(0.88); }
+.tp-btn--play {
+  width: 52px;
+  height: 52px;
+  color: #0a0a0a;
+  background: linear-gradient(180deg, #ffffff 0%, #d9d9d9 48%, #9d9d9d 52%, #efefef 100%);
+  box-shadow: 0 0 22px rgba(255, 255, 255, 0.2), inset 0 1px 0 #fff;
+}
+.tp-btn--play svg {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  transition: opacity 0.3s var(--ease), transform 0.45s var(--ease);
+}
+.tp-btn--play .i-pause { opacity: 0; transform: scale(0.6); }
+.tp-btn--play.is-playing .i-play { opacity: 0; transform: scale(0.6); }
+.tp-btn--play.is-playing .i-pause { opacity: 1; transform: scale(1); }
+
+.tp-speed {
+  justify-self: end;
+  min-width: 52px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.tp-speed.is-slow { color: #000; background: var(--fg); }
+
+/* Gros bouton TAP : visible seulement dans l'onglet Synchro */
+.tap {
+  display: none;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  color: #0a0a0a;
+  background: linear-gradient(180deg, #ffffff 0%, #e2e2e2 46%, #a6a6a6 54%, #f2f2f2 100%);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.2), inset 0 1px 0 #fff;
+  touch-action: manipulation;
+  transition: transform 0.25s var(--ease);
+}
+.adm[data-tab="sync"] .tap { display: block; }
+.tap:active { transform: scale(0.97); }
+.tap-label {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+}
+.tap-next {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.6;
+}
+/* Sur ordinateur, la barre espace suffit : bouton plus discret */
+@media (hover: hover) and (pointer: fine) {
+  .tap { padding: 8px 16px; }
+  .tap-label { font-size: 1rem; }
+}
+
+@media (min-width: 768px) {
+  .adm-top { padding: 22px 24px 12px; }
+  .adm-tabs { margin: 4px 24px 0; }
+  .adm-status { margin: 12px 24px 0; }
+  .pane { padding: 18px 24px; }
+  .adm-transport { padding: 12px 24px 22px; }
+  .row-text { font-size: 1.1rem; }
+}
