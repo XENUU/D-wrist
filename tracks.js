@@ -43,7 +43,7 @@ const TRACKS = [
     title: "I HATE BEING IN LOVE",
     artist: "D-wrist",
     mood: "lipstick", // ambiance du lecteur : "lipstick" (sans = gris)
-    cover: "covers/i-hate-being-in-love.jpg",
+    cover: "covers/i-hate-being-in-love.jpg?v=2",
     audio: "audio/i-hate-being-in-love.wav",
     lyrics: `
 [00:03.46](Huh, huh, huh yah)
