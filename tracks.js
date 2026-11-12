@@ -39,6 +39,15 @@
 
 const TRACKS = [
   {
+    id: "i-hate-being-in-love",
+    title: "I HATE BEING IN LOVE",
+    artist: "D-wrist",
+    cover: "covers/i-hate-being-in-love.jpg",
+    audio: "audio/i-hate-being-in-love.wav",
+    lyrics: `
+`
+  },
+  {
     id: "stage",
     title: "Stage",
     artist: "D-wrist",
@@ -199,15 +208,6 @@ const TRACKS = [
 [01:42.39]C'est moi je créer l'écart
 [01:43.38]Sinon comment tu veux gagner (huh)
 [01:45.43]Comment tu veux faire (huh, huh, yah)
-`
-  },
-  {
-    id: "i-hate-being-in-love",
-    title: "I HATE BEING IN LOVE",
-    artist: "D-wrist",
-    cover: "covers/i-hate-being-in-love.jpg",
-    audio: "audio/i-hate-being-in-love.wav",
-    lyrics: `
 `
   }
 
