@@ -45,6 +45,47 @@ const TRACKS = [
     cover: "covers/i-hate-being-in-love.jpg",
     audio: "audio/i-hate-being-in-love.wav",
     lyrics: `
+[00:03.46](Huh, huh, huh yah)
+[00:15.46](I hate being in love)
+[00:19.18](I hate being in lo-ove)
+[00:22.48](I hate being in love)
+[00:28.81]Huh, huh, huh, yah
+[00:32.32]Huh, huh, huh, yah
+[00:36.08]Elle est marrante, elle grow on me
+[00:37.83]Elle veut qu'on s'batte, elle est too horny
+[00:39.76]J'suis son Clyde et c'est ma Bonnie, huh yah
+[00:43.25]Huh, I hate being in love huh
+[00:46.66]Huh, I hate being in love
+[00:48.93]I hate being in love, I hate being in love huh (I hate being in love)
+[00:54.23]I hate being in love huh
+[00:56.35]Too many, too many guap que j'compte plus on me, j'regarde plus l'bank account
+[00:59.87]Ta chérie elle grow on me, c'est plus ton amie, c'est plutôt ma main account
+[01:03.32]Comment ça t'as pas les thunes ? T'as pas les racks ? T'as pas le cash en pounds ?
+[01:06.90]Faut toujours viser la lune pour trouver sa place, moi j'me vois number 1
+[01:10.18]Ma bitch, ma bitch (huh)
+[01:12.18]Tous ces envieux voient les pics
+[01:13.96]Tous ces envieux voient les pics
+[01:15.27]Mais y'a que moi que ma baby elle kiss (bitch)
+[01:17.53]Que moi qui goûte à ses lips (lips)
+[01:19.24]Noir sur mes lèvres c'est son lipstick
+[01:21.01]Noir dans son cœur c'est le risque
+[01:22.82]J'me suis perdu dans son lipstick
+[01:25.23]♪
+[01:31.41](I hate being in love, I hate being in love huh)
+[01:35.18]♪
+[01:36.73](I hate being in love, I hate it)
+[01:39.61]Huh, I hate being in love huh
+[01:43.15]Huh, I hate being in love
+[01:45.49]I hate being in love, I hate being in love huh (I hate being in love)
+[01:50.77]I hate being in love huh
+[01:52.82]Too many, too many guap que j'compte plus on me, j'regarde plus l'bank account
+[01:56.36]Ta chérie elle grow on me, c'est plus ton amie, c'est plutôt ma main account
+[01:59.87]Comment ça t'as pas les thunes ? T'as pas les racks ? T'as pas le cash en pounds ?
+[02:03.40]Faut toujours viser la lune pour trouver sa place, moi j'me vois number 1
+[02:06.92](Huh, huh)
+[02:09.55](Moi j'me vois number 1, huh)
+[02:13.66](Ma bitch, ma bitch)
+[02:17.24](I hate being in love, I hate being in love, huh)
 `
   },
   {
