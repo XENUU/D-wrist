@@ -471,6 +471,7 @@
       dom.playerArtist.textContent = track.artist || 'D-wrist';
       dom.playerCover.alt = `Cover de ${track.title}`;
 
+      applyMood();
       buildLyrics(track.lyrics);
       lastTimeText = '';
       renderProgress(0);
@@ -481,6 +482,18 @@
     document.title = `${track.title} — ${track.artist || 'D-wrist'}`;
     if (autoplay) play();
     updatePlayButton();
+  }
+
+  /* ==========================================================================
+     AMBIANCE PAR MORCEAU
+     ========================================================================== */
+
+  /** Pose data-mood sur <body> selon le morceau chargé (le CSS fait le reste) */
+  function applyMood() {
+    const track = TRACK_LIST[state.current];
+    const mood = track && track.mood;
+    if (mood) document.body.dataset.mood = mood;
+    else delete document.body.dataset.mood;
   }
 
   function play() {

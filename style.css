@@ -704,9 +704,63 @@ body.is-player .backdrop { opacity: 0.75; }
   .ctrl--play { width: 56px; height: 56px; }
 }
 
+/* ==========================================================================
+   AMBIANCES PAR MORCEAU (champ « mood » dans tracks.js)
+   Le JS pose data-mood sur <body> ; tout ne s'applique que sur la page musique.
+   ========================================================================== */
+
+.ambiance { transition: opacity 1.1s var(--ease); }
+
+.mood {
+  position: fixed;
+  inset: 0;
+  z-index: 2;               /* au-dessus du fond, sous le lecteur */
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.1s var(--ease);
+}
+body.is-player[data-mood] .mood { opacity: 1; }
+
+/* Deux grosses lueurs qui dérivent lentement (même mouvement que .light) */
+.mood::before,
+.mood::after {
+  content: "";
+  position: absolute;
+  width: 95vmax;
+  height: 95vmax;
+  border-radius: 50%;
+  will-change: transform;
+  animation: drift 30s ease-in-out infinite alternate;
+}
+.mood::before { left: -30vmax; bottom: -54vmax; }
+.mood::after  { right: -55vmax; top: -64vmax; animation-duration: 36s; animation-delay: -10s; }
+
+/* ---------- Lipstick noir : noir profond, lueur bordeaux ---------- */
+body.is-player[data-mood="lipstick"] .ambiance { opacity: 0.12; }
+body.is-player[data-mood="lipstick"] .backdrop { opacity: 0.1; }
+/* Voile presque noir qui éteint le dégradé gris du fond */
+[data-mood="lipstick"] .mood { background: rgba(7, 3, 4, 0.9); }
+[data-mood="lipstick"] .mood::before {
+  background: radial-gradient(closest-side,
+    rgba(165, 14, 34, 0.85), rgba(100, 8, 22, 0.32) 50%, transparent 100%);
+}
+[data-mood="lipstick"] .mood::after {
+  background: radial-gradient(closest-side,
+    rgba(120, 10, 26, 0.4), rgba(80, 6, 16, 0.12) 50%, transparent 100%);
+}
+[data-mood="lipstick"] .lyric.is-past { color: #e8b9bf; }
+[data-mood="lipstick"] .lyric.is-active { text-shadow: 0 0 26px rgba(210, 30, 55, 0.6); }
+[data-mood="lipstick"] .progress-fill { background: linear-gradient(90deg, #5a0b16, #f3e6e7); }
+[data-mood="lipstick"] .ctrl--play { box-shadow:
+    0 0 28px rgba(200, 30, 50, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 12px 30px -12px rgba(0, 0, 0, 0.9); }
+
 /* Respect du réglage « réduire les animations » */
 @media (prefers-reduced-motion: reduce) {
   .light,
+  .mood::before,
+  .mood::after,
   .grain,
   .logo-text::after,
   .lyrics-empty { animation: none; }
