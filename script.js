@@ -59,6 +59,10 @@
 
     audio: $('#audio'),
     backdropImg: $('#backdropImg'),
+    flashes: $('#flashes'),
+    sparkles: $('#sparkles'),
+    beams: document.querySelectorAll('.bw'),
+    bloom: $('#bloom'),
     toast: $('#toast'),
   };
 
@@ -473,6 +477,8 @@
 
       applyMood();
       buildLyrics(track.lyrics);
+      indexStageCues();
+      updateStagePhase(-1);
       lastTimeText = '';
       renderProgress(0);
       dom.timeTotal.textContent = '0:00';
@@ -494,6 +500,237 @@
     const mood = track && track.mood;
     if (mood) document.body.dataset.mood = mood;
     else delete document.body.dataset.mood;
+    startShow();
+  }
+
+  /* ---------- Stage : flashs d'appareils photo ----------
+     Pendant la lecture, un flash de temps en temps dans la « foule » (bas et
+     bords de l'écran, jamais au milieu des paroles). Sur les lignes « Shoot »
+     ou « photo », une rafale comme des photographes devant la scène. */
+  let flashTimer = 0;
+
+  function flashesActive() {
+    const phase = document.body.dataset.stage;
+    return !REDUCED && state.view === 'player' && !audio.paused &&
+      (phase === 'on' || phase === 'hell');
+  }
+
+  /* ---------- Stage : la scène suit les paroles ----------
+     Repères trouvés dans le texte : 1er et 2e « J'walk on the stage »,
+     puis la ligne « Heaven & Hell ». Calculé à partir de la ligne en cours,
+     donc ça marche aussi si on avance ou recule dans le morceau. */
+  const stageCues = { first: -1, second: -1, hell: -1 };
+
+  function indexStageCues() {
+    const walks = [];
+    stageCues.hell = -1;
+    lyr.lines.forEach((l, i) => {
+      const text = l.el.textContent;
+      if (/walk on the stage/i.test(text)) walks.push(i);
+      if (/heaven\s*&\s*hell/i.test(text)) stageCues.hell = i;
+    });
+    stageCues.first = walks.length ? walks[0] : -1;
+    stageCues.second = walks.length > 1 ? walks[1] : stageCues.first;
+  }
+
+  function updateStagePhase(idx) {
+    const body = document.body;
+    if (body.dataset.mood !== 'stage') { delete body.dataset.stage; return; }
+
+    let phase = 'dark';
+    if (stageCues.hell >= 0 && idx >= stageCues.hell) phase = 'hell';
+    else if (stageCues.second < 0 || idx >= stageCues.second) phase = 'on';
+    else if (idx >= stageCues.first) phase = 'flicker';
+
+    const prev = body.dataset.stage;
+    if (phase === prev) return;
+    body.dataset.stage = phase;
+
+    // Tout s'allume : petit éclair de lumière venu d'en haut
+    if (phase === 'on' && (prev === 'flicker' || prev === 'dark') && !REDUCED) {
+      dom.bloom.animate(
+        [{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 0 }],
+        { duration: 1600, easing: 'ease-out' }
+      );
+    }
+    if (phase !== 'on' && phase !== 'hell') stopCues();
+    startShow();
+  }
+
+  /** Crée un flash à une position aléatoire de la zone autorisée */
+  function spawnFlash(strong = false) {
+    let x, y;
+    if (Math.random() < 0.6) {           // la foule, en bas
+      x = 5 + Math.random() * 90;
+      y = 72 + Math.random() * 24;
+    } else {                              // les bords gauche / droit
+      x = Math.random() < 0.5 ? 2 + Math.random() * 10 : 88 + Math.random() * 10;
+      y = 15 + Math.random() * 60;
+    }
+    const el = document.createElement('div');
+    el.className = 'flash';
+    el.style.left = x + '%';
+    el.style.top = y + '%';
+    el.style.setProperty('--s', Math.round((strong ? 34 : 22) + Math.random() * 30) + 'px');
+    el.style.setProperty('--o', (strong ? 0.75 : 0.4 + Math.random() * 0.3).toFixed(2));
+    el.addEventListener('animationend', () => el.remove());
+    dom.flashes.appendChild(el);
+  }
+
+  /** Boucle : un flash toutes les 1,5 à 5 s tant que le morceau joue */
+  function scheduleFlash() {
+    clearTimeout(flashTimer);
+    if (!flashesActive()) return;
+    flashTimer = setTimeout(() => {
+      if (flashesActive()) spawnFlash();
+      scheduleFlash();
+    }, 1500 + Math.random() * 3500);
+  }
+
+  /* ---------- Stage : régie lumière ----------
+     Comme un éclairagiste en concert : toutes les 2,5 à 7 s, un « effet »
+     tiré au hasard (balayage en chenillard, stroboscope, coupure, solo,
+     respiration…). Chaque effet est une animation d'opacité sur les
+     projecteurs ; à la fin ils reviennent tout seuls à « allumé ». */
+  let cueTimer = 0;
+  let cueAnims = [];
+
+  function cueAnim(el, frames, duration, delay = 0) {
+    const a = el.animate(frames, { duration, delay, easing: 'ease-in-out' });
+    cueAnims.push(a);
+    a.onfinish = a.oncancel = () => { cueAnims = cueAnims.filter((x) => x !== a); };
+  }
+
+  function stopCues() {
+    clearTimeout(cueTimer);
+    cueAnims.slice().forEach((a) => a.cancel());
+  }
+
+  const CUES = [
+    // Chenillard : les projecteurs s'allument l'un après l'autre
+    { w: 3, run(beams) {
+      const order = Math.random() < 0.5 ? beams : beams.slice().reverse();
+      order.forEach((b, i) => cueAnim(b, [
+        { opacity: 1 }, { opacity: 0.08, offset: 0.12 },
+        { opacity: 0.08, offset: 0.2 + i * 0.14 }, { opacity: 1, offset: 0.3 + i * 0.14 },
+        { opacity: 1 },
+      ], 2600));
+    } },
+    // Stroboscope doux sur tous les projecteurs
+    { w: 2, run(beams) {
+      beams.forEach((b) => cueAnim(b, [
+        { opacity: 1 }, { opacity: 0.1 }, { opacity: 0.95 }, { opacity: 0.05 },
+        { opacity: 0.9 }, { opacity: 0.12 }, { opacity: 1 },
+      ], 1300));
+    } },
+    // Coupure franche, puis tout revient avec un éclair
+    { w: 1, run(beams) {
+      beams.forEach((b) => cueAnim(b, [
+        { opacity: 1 }, { opacity: 0, offset: 0.1 }, { opacity: 0, offset: 0.55 }, { opacity: 1, offset: 0.65 }, { opacity: 1 },
+      ], 1500));
+      setTimeout(() => { if (lightsActive()) dom.bloom.animate(
+        [{ opacity: 0 }, { opacity: 0.7, offset: 0.1 }, { opacity: 0 }], { duration: 1200, easing: 'ease-out' }); }, 900);
+    } },
+    // Solo : un ou deux projecteurs seulement, les autres baissent
+    { w: 3, run(beams) {
+      const keep = new Set([Math.floor(Math.random() * beams.length)]);
+      if (Math.random() < 0.5) keep.add(Math.floor(Math.random() * beams.length));
+      beams.forEach((b, i) => { if (!keep.has(i)) cueAnim(b, [
+        { opacity: 1 }, { opacity: 0.06, offset: 0.12 }, { opacity: 0.06, offset: 0.85 }, { opacity: 1 },
+      ], 3200 + Math.random() * 1500); });
+    } },
+    // Respiration lente de toute la scène
+    { w: 2, run(beams) {
+      beams.forEach((b) => cueAnim(b, [
+        { opacity: 1 }, { opacity: 0.3 }, { opacity: 1 }, { opacity: 0.3 }, { opacity: 1 },
+      ], 4200));
+    } },
+    // Un seul projecteur qui grésille
+    { w: 3, run(beams) {
+      const b = beams[Math.floor(Math.random() * beams.length)];
+      cueAnim(b, [
+        { opacity: 1 }, { opacity: 0.15 }, { opacity: 0.85 }, { opacity: 0.05 }, { opacity: 0.7 }, { opacity: 1 },
+      ], 1100);
+    } },
+    // Alternance gauche / droite
+    { w: 2, run(beams) {
+      beams.forEach((b, i) => {
+        const left = i < beams.length / 2;
+        const lo = { opacity: 0.08 }, hi = { opacity: 1 };
+        cueAnim(b, left ? [hi, lo, hi, lo, hi] : [hi, hi, lo, hi, lo, hi], 2400);
+      });
+    } },
+  ];
+  const CUE_TOTAL = CUES.reduce((s, c) => s + c.w, 0);
+
+  function lightsActive() { return flashesActive(); }
+
+  function runCue() {
+    let r = Math.random() * CUE_TOTAL;
+    const cue = CUES.find((c) => (r -= c.w) < 0) || CUES[0];
+    cue.run(Array.from(dom.beams));
+  }
+
+  function scheduleCue() {
+    clearTimeout(cueTimer);
+    if (!lightsActive()) return;
+    cueTimer = setTimeout(() => {
+      if (lightsActive() && !cueAnims.length) runCue();
+      scheduleCue();
+    }, 2500 + Math.random() * 4500);
+  }
+
+  /** Lance (ou relance) flashs + régie lumière si la scène est allumée */
+  function startShow() {
+    scheduleFlash();
+    scheduleCue();
+  }
+
+  /** Rafale de flashs (lignes « Shoot » / « photo ») */
+  function flashBurst() {
+    if (!flashesActive()) return;
+    const n = 5 + Math.floor(Math.random() * 4);
+    for (let k = 0; k < n; k++) {
+      setTimeout(() => { if (flashesActive()) spawnFlash(true); }, k * (90 + Math.random() * 120));
+    }
+  }
+
+  /* ---------- Stage : scintillements « diamants » ----------
+     Sur « Diamonds on me », des éclats en étoile (comme un diamant qui
+     accroche le flash) sur la ligne chantée et autour. */
+  function spawnGlint(x, y, size) {
+    const el = document.createElement('div');
+    el.className = 'glint';
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.setProperty('--s', size + 'px');
+    el.style.setProperty('--r', Math.round(Math.random() * 40 - 20) + 'deg');
+    el.addEventListener('animationend', () => el.remove());
+    dom.sparkles.appendChild(el);
+  }
+
+  function diamondSparkle(line, duration) {
+    if (REDUCED || document.body.dataset.mood !== 'stage') return;
+    line.el.classList.add('is-bling');
+    const gap = 200; // ms entre deux salves d'éclats
+    const count = Math.max(4, Math.floor((duration * 1000) / gap));
+    for (let k = 0; k < count; k++) {
+      setTimeout(() => {
+        if (state.view !== 'player' || audio.paused) return;
+        const r = line.el.getBoundingClientRect();
+        const n = 1 + (Math.random() < 0.5 ? 1 : 0);
+        for (let j = 0; j < n; j++) {
+          if (Math.random() < 0.75) {           // sur les lettres
+            spawnGlint(r.left + Math.random() * r.width * 0.9, r.top + Math.random() * r.height,
+              26 + Math.random() * 34);
+          } else {                              // un peu partout, plus petit
+            spawnGlint(Math.random() * innerWidth, innerHeight * (0.15 + Math.random() * 0.7),
+              14 + Math.random() * 18);
+          }
+        }
+      }, k * gap);
+    }
+    setTimeout(() => line.el.classList.remove('is-bling'), duration * 1000 + 400);
   }
 
   function play() {
@@ -606,7 +843,7 @@
   }
 
   function initAudioEvents() {
-    audio.addEventListener('play', () => { updatePlayButton(); startLoop(); });
+    audio.addEventListener('play', () => { updatePlayButton(); startLoop(); startShow(); });
     audio.addEventListener('pause', updatePlayButton);
     audio.addEventListener('timeupdate', () => { if (!loopRaf) syncUI(); });
     audio.addEventListener('seeked', () => syncUI(true));
@@ -754,6 +991,13 @@
         l.el.classList.toggle('is-active', i === idx);
         l.el.classList.toggle('is-past', i < idx);
       });
+      const line = lyr.lines[idx];
+      updateStagePhase(idx);
+      if (!force && line && /shoot|photo/i.test(line.el.textContent)) flashBurst();
+      if (!force && line && /diamond/i.test(line.el.textContent)) {
+        const next = lyr.lines[idx + 1];
+        diamondSparkle(line, next ? next.time - line.time : 2);
+      }
     }
     if (!lyr.userScrolling) scrollToActive();
   }
@@ -903,6 +1147,7 @@
 
     loadTrack(i, { autoplay: animate });
     dom.player.hidden = false;
+    startShow(); // retour sur le lecteur pendant la lecture
     resumeAutoScroll();
     scrollToActive(true);
 

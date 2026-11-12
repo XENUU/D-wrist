@@ -756,11 +756,228 @@ body.is-player[data-mood="lipstick"] .backdrop { opacity: 0.1; }
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     0 12px 30px -12px rgba(0, 0, 0, 0.9); }
 
+/* ---------- Stage : projecteurs, fumée, flashs d'appareils photo ----------
+   Le JS pose data-stage sur <body> selon la ligne chantée :
+   dark    → intro, scène éteinte
+   flicker → 1er « J'walk on the stage » : un seul clignotement doux (l'annonce)
+   on      → 2e « J'walk on the stage » : tout s'allume, le jeu de lumières
+             (aléatoire, piloté en JS) et les flashs commencent
+   hell    → « Heaven & Hell » final : la lumière bascule au rouge
+   Tout reste discret : faisceaux fins qui s'éteignent avant le texte,
+   flashs seulement sur les bords et dans la « foule » en bas. */
+.rig,
+.smoke,
+.flashes,
+.bloom,
+.stage-scrim { display: none; }
+[data-mood="stage"] .rig,
+[data-mood="stage"] .smoke,
+[data-mood="stage"] .flashes,
+[data-mood="stage"] .bloom,
+[data-mood="stage"] .stage-scrim { display: block; }
+
+body.is-player[data-mood="stage"] .ambiance { opacity: 0.2; }
+body.is-player[data-mood="stage"] .backdrop { opacity: 0.2; }
+[data-mood="stage"] .mood { background: rgba(4, 4, 4, 0.85); }
+
+.rig { position: absolute; inset: 0; }
+
+/* Conteneur d'un projecteur : gère l'allumage (opacité) */
+.bw {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.6s var(--ease);
+}
+[data-stage="on"] .bw,
+[data-stage="hell"] .bw { opacity: 1; transition-duration: 0.35s; }
+
+/* Annonce : un seul clignotement, lent et doux, puis une veilleuse */
+[data-stage="flicker"] .bw { animation: announce 3.2s ease-in-out forwards; }
+@keyframes announce {
+  0%   { opacity: 0; }
+  40%  { opacity: 0.7; }
+  100% { opacity: 0.08; }
+}
+
+/* Faisceau : cône fin et flou, accroché en haut, qui balaie lentement.
+   Deux couches (blanche / rouge) pour passer au rouge en fondu. */
+.beam {
+  position: absolute;
+  top: -4vh;
+  width: 20vmax;
+  height: 66vh;
+  margin-left: -10vmax;
+  transform-origin: 50% 0;
+  clip-path: polygon(47% 0, 53% 0, 100% 100%, 0 100%);
+  filter: blur(7px);
+  will-change: transform;
+  animation: sweep 16s ease-in-out infinite alternate;
+}
+.beam::before,
+.beam::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transition: opacity 1.6s var(--ease);
+}
+.beam::before {
+  background: linear-gradient(to bottom,
+    rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.22) 50%, transparent 100%);
+}
+.beam::after {
+  opacity: 0;
+  background: linear-gradient(to bottom,
+    rgba(255, 45, 55, 0.9), rgba(200, 20, 30, 0.25) 50%, transparent 100%);
+}
+[data-stage="hell"] .beam::before { opacity: 0; }
+[data-stage="hell"] .beam::after  { opacity: 1; }
+
+.beam--1 { left: 10%; opacity: 0.5;  --a: -26deg; --b: -8deg; }
+.beam--2 { left: 34%; opacity: 0.32; --a: -14deg; --b: 8deg;  animation-duration: 21s; animation-delay: -7s; }
+.beam--3 { left: 66%; opacity: 0.32; --a: 12deg;  --b: -8deg; animation-duration: 19s; animation-delay: -3s; }
+.beam--4 { left: 90%; opacity: 0.5;  --a: 26deg;  --b: 8deg;  animation-duration: 18s; animation-delay: -12s; }
+
+@keyframes sweep {
+  from { transform: rotate(var(--a)); }
+  to   { transform: rotate(var(--b)); }
+}
+
+/* Fumée de scène au ras du sol (devient rouge sur « Heaven & Hell ») */
+.smoke {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  bottom: -8%;
+  height: 40%;
+  opacity: 0.45;
+  transition: opacity 1.2s var(--ease);
+  will-change: transform;
+  animation: drift 24s ease-in-out infinite alternate;
+}
+[data-stage="on"] .smoke,
+[data-stage="hell"] .smoke { opacity: 1; }
+.smoke::before,
+.smoke::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transition: opacity 1.6s var(--ease);
+}
+.smoke::before {
+  background:
+    radial-gradient(45% 60% at 30% 100%, rgba(200, 200, 200, 0.14), transparent 75%),
+    radial-gradient(50% 55% at 75% 100%, rgba(200, 200, 200, 0.11), transparent 75%);
+}
+.smoke::after {
+  opacity: 0;
+  background:
+    radial-gradient(55% 70% at 30% 100%, rgba(200, 20, 30, 0.45), transparent 75%),
+    radial-gradient(60% 65% at 75% 100%, rgba(160, 12, 22, 0.38), transparent 75%);
+}
+[data-stage="hell"] .smoke::before { opacity: 0; }
+[data-stage="hell"] .smoke::after  { opacity: 1; }
+
+/* Éclair général quand tout s'allume */
+.bloom {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(90% 60% at 50% 0%, rgba(255, 255, 255, 0.5), transparent 75%);
+}
+
+.flashes { position: absolute; inset: 0; }
+
+/* Un flash : éclat bref + petite traînée horizontale (comme un objectif) */
+.flash {
+  position: absolute;
+  width: var(--s, 40px);
+  height: var(--s, 40px);
+  margin: calc(var(--s, 40px) / -2);
+  border-radius: 50%;
+  background: radial-gradient(closest-side,
+    #fff, rgba(255, 255, 255, 0.45) 22%, transparent 100%);
+  opacity: 0;
+  animation: flash 0.32s ease-out forwards;
+}
+.flash::after {
+  content: "";
+  position: absolute;
+  left: -60%;
+  right: -60%;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+}
+@keyframes flash {
+  0%   { opacity: 0;   transform: scale(0.4); }
+  18%  { opacity: var(--o, 0.7); transform: scale(1); }
+  100% { opacity: 0;   transform: scale(1.1); }
+}
+
+/* Scintillement « diamant » : étoile à 4 branches + cœur lumineux,
+   légère irisation sur les branches comme la dispersion d'un diamant */
+.sparkles {
+  position: fixed;
+  inset: 0;
+  z-index: 41;
+  pointer-events: none;
+  overflow: hidden;
+}
+.glint {
+  position: absolute;
+  width: var(--s, 30px);
+  height: var(--s, 30px);
+  margin: calc(var(--s, 30px) / -2);
+  opacity: 0;
+  background: radial-gradient(closest-side,
+    #fff, rgba(255, 255, 255, 0.55) 14%, rgba(255, 255, 255, 0.08) 38%, transparent 60%);
+  animation: glint 0.75s ease-out forwards;
+}
+.glint::before,
+.glint::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 2px;
+  background: linear-gradient(90deg,
+    transparent, #d6ecff 30%, #fff 50%, #ffe0f2 70%, transparent);
+}
+.glint::after { transform: rotate(90deg) scaleX(0.75); }
+@keyframes glint {
+  0%   { opacity: 0; transform: rotate(var(--r)) scale(0.2); }
+  25%  { opacity: 1; transform: rotate(calc(var(--r) + 20deg)) scale(1); }
+  100% { opacity: 0; transform: rotate(calc(var(--r) + 55deg)) scale(0.35); }
+}
+/* La ligne « Diamonds » brille un peu plus fort pendant l'effet */
+[data-mood="stage"] .lyric.is-active.is-bling {
+  text-shadow: 0 0 18px rgba(255, 255, 255, 0.75), 0 0 42px rgba(200, 225, 255, 0.35);
+}
+
+/* Voile sombre derrière les paroles : la lumière ne gêne jamais la lecture */
+.stage-scrim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(70% 42% at 45% 46%, rgba(0, 0, 0, 0.55), transparent 100%);
+}
+
+[data-mood="stage"] .lyric.is-active {
+  text-shadow: 0 0 26px rgba(255, 255, 255, 0.4);
+  transition: opacity 0.55s var(--ease), transform 0.7s var(--ease), text-shadow 1.6s var(--ease);
+}
+[data-stage="hell"] .lyric.is-active { text-shadow: 0 0 26px rgba(255, 40, 50, 0.6); }
+
 /* Respect du réglage « réduire les animations » */
 @media (prefers-reduced-motion: reduce) {
   .light,
   .mood::before,
   .mood::after,
+  .beam,
+  .smoke,
   .grain,
   .logo-text::after,
   .lyrics-empty { animation: none; }

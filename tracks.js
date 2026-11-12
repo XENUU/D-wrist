@@ -42,7 +42,7 @@ const TRACKS = [
     id: "i-hate-being-in-love",
     title: "I HATE BEING IN LOVE",
     artist: "D-wrist",
-    mood: "lipstick", // ambiance du lecteur : "lipstick" (sans = gris)
+    mood: "lipstick", // ambiance du lecteur : "lipstick" ou "stage" (sans = gris)
     cover: "covers/i-hate-being-in-love.jpg?v=2",
     audio: "audio/i-hate-being-in-love.wav",
     lyrics: `
@@ -93,6 +93,7 @@ const TRACKS = [
     id: "stage",
     title: "Stage",
     artist: "D-wrist",
+    mood: "stage",
     cover: "covers/stage.jpg",
     audio: "audio/stage.wav",
     lyrics: `

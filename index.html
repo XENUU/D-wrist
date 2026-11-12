@@ -26,7 +26,19 @@
   <!-- Fond flouté de la cover en cours (visible sur la page musique) -->
   <div class="backdrop" aria-hidden="true"><img id="backdropImg" alt=""></div>
   <!-- Ambiance propre au morceau (champ « mood » dans tracks.js) -->
-  <div class="mood" aria-hidden="true"></div>
+  <div class="mood" aria-hidden="true">
+    <!-- « stage » : projecteurs, fumée et flashs (créés en JS) -->
+    <div class="rig">
+      <div class="bw"><div class="beam beam--1"></div></div>
+      <div class="bw"><div class="beam beam--2"></div></div>
+      <div class="bw"><div class="beam beam--3"></div></div>
+      <div class="bw"><div class="beam beam--4"></div></div>
+    </div>
+    <div class="smoke"></div>
+    <div class="flashes" id="flashes"></div>
+    <div class="bloom" id="bloom"></div>
+    <div class="stage-scrim"></div>
+  </div>
 
   <!-- ===== Vue ACCUEIL : logo + carrousel ===== -->
   <main id="home" class="view view--home">
@@ -100,6 +112,8 @@
   </section>
 
   <!-- Vignettage + grain argentique par-dessus tout -->
+  <!-- Scintillements « diamants » (au-dessus des paroles) -->
+  <div class="sparkles" id="sparkles" aria-hidden="true"></div>
   <div class="vignette" aria-hidden="true"></div>
   <div class="grain" aria-hidden="true"></div>
 
