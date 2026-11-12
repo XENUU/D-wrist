@@ -200,6 +200,15 @@ const TRACKS = [
 [01:43.38]Sinon comment tu veux gagner (huh)
 [01:45.43]Comment tu veux faire (huh, huh, yah)
 `
+  },
+  {
+    id: "i-hate-being-in-love",
+    title: "I HATE BEING IN LOVE",
+    artist: "D-wrist",
+    cover: "covers/i-hate-being-in-love.jpg",
+    audio: "audio/i-hate-being-in-love.wav",
+    lyrics: `
+`
   }
 
   /* ---- MODÈLE À COPIER-COLLER (retire les deux lignes de tirets) ------
