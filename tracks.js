@@ -39,6 +39,15 @@
 
 const TRACKS = [
   {
+    id: "lucia",
+    title: "LUCIA",
+    artist: "D-wrist",
+    cover: "covers/lucia.jpg",
+    audio: "audio/lucia.wav",
+    lyrics: `
+`
+  },
+  {
     id: "i-hate-being-in-love",
     title: "I HATE BEING IN LOVE",
     artist: "D-wrist",
