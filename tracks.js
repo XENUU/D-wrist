@@ -45,6 +45,44 @@ const TRACKS = [
     cover: "covers/lucia.jpg",
     audio: "audio/lucia.wav",
     lyrics: `
+[00:00.00]♪
+[00:24.50]Huh, huh, yah (cash cash)
+[00:26.83]Cash, tema la pile de cash
+[00:29.38]Tema les jeans, les diams, c'est fashion, c'est l'genre de sapes qui fache (fache)
+[00:32.60]C'est l'genre de flow qu'tu vois que on stage avec des lights et des basses
+[00:36.06]C'est l'genre de gow qu'tu vois que aux states, mon gars faut poser les bases (les basics)
+[00:40.31]Huh, toi ta bitch elle est trop basic (Ha)
+[00:42.73]Et ton flow il manque d'esthétique (Ha)
+[00:44.35]Ma bitch sous gilet tactique (Ha)
+[00:46.03]Ha (Ha) Huh (Huh)
+[00:47.78]On dirait GTA, huh
+[00:49.46]Ma gow c'est Lucia
+[00:50.72]Ta bitch est fake gros ça pue l'IA
+[00:53.20]♪
+[00:55.64]On dirait GTA
+[00:57.63]Ça tire à balles réelles, dans l'dos, gros moi c'est pas ma DA
+[01:01.10]Huh (huh)
+[01:02.24]Et toi tu viens shame qui ? (bitch)
+[01:03.50]Sale conne toi tu viens shame qui ?
+[01:04.87]T'as rien pour toi et tu crois t'es une baddie
+[01:06.47]La peau sur les os, ouais y'a rien chez toi d'shaky (ha)
+[01:08.85]Et encore j'suis un chic type (bitch, huh)
+[01:10.68]Tu crois t'es artistique (huh)
+[01:12.23]T'es juste une meuf qui s'pique (huh)
+[01:13.92]Tu crois t'es la miss type (huh)
+[01:15.57]T'es juste une meuf toxique (huh)
+[01:17.74]♪
+[01:22.19]Maintenant j'ai ma Lucia
+[01:23.62]Cash, tema la pile de cash
+[01:26.01]Tema les jeans, les diams, c'est fashion, c'est l'genre de sapes qui fache (fache)
+[01:29.37]C'est l'genre de flow qu'tu vois que on stage avec des lights et des basses
+[01:32.69]C'est l'genre de gow qu'tu vois que aux states, mon gars faut poser les bases (les basics)
+[01:36.92]Cash, tema la pile de cash
+[01:39.36]Tema les jeans, les diams, c'est fashion, c'est l'genre de sapes qui fache (fache)
+[01:42.73]C'est l'genre de flow qu'tu vois que on stage avec des lights et des basses
+[01:46.07]C'est l'genre de gow qu'tu vois que aux states, mon gars faut poser les bases (les basics)
+[01:51.10](Huh, ma gow c'est Lucia)
+[01:54.47]♪
 `
   },
   {
