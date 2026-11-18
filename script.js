@@ -61,6 +61,7 @@
     backdropImg: $('#backdropImg'),
     flashes: $('#flashes'),
     sparkles: $('#sparkles'),
+    hudCash: $('#hudCash'),
     beams: document.querySelectorAll('.bw'),
     bloom: $('#bloom'),
     toast: $('#toast'),
@@ -479,6 +480,7 @@
       buildLyrics(track.lyrics);
       indexStageCues();
       updateStagePhase(-1);
+      updateCash(-1, true);
       lastTimeText = '';
       renderProgress(0);
       dom.timeTotal.textContent = '0:00';
@@ -501,6 +503,46 @@
     if (mood) document.body.dataset.mood = mood;
     else delete document.body.dataset.mood;
     startShow();
+  }
+
+  /* ---------- HUD : compteur de cash ----------
+     Chaque « cash » chanté jusqu'à la ligne en cours ajoute 25k $.
+     Calculé depuis le début : reste juste si on avance ou recule. */
+  const CASH_STEP = 25000;
+  let cashShown = 0;
+  let cashRaf = 0;
+
+  function cashUpTo(idx) {
+    let n = 0;
+    for (let i = 0; i <= idx && i < lyr.lines.length; i++) {
+      n += (lyr.lines[i].el.textContent.match(/cash/gi) || []).length;
+    }
+    return n * CASH_STEP;
+  }
+
+  function formatCash(v) {
+    return '$' + Math.round(v / 1000) + 'k';
+  }
+
+  function updateCash(idx, instant) {
+    const target = cashUpTo(idx);
+    cancelAnimationFrame(cashRaf);
+    if (instant || REDUCED || target <= cashShown) {
+      cashShown = target;
+      dom.hudCash.textContent = formatCash(target);
+      return;
+    }
+    const from = cashShown;
+    const t0 = performance.now();
+    dom.hudCash.classList.add('is-up');
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / 700);
+      cashShown = from + (target - from) * (1 - Math.pow(1 - k, 3));
+      dom.hudCash.textContent = formatCash(cashShown);
+      if (k < 1) cashRaf = requestAnimationFrame(step);
+      else dom.hudCash.classList.remove('is-up');
+    };
+    cashRaf = requestAnimationFrame(step);
   }
 
   /* ---------- Stage : flashs d'appareils photo ----------
@@ -993,6 +1035,7 @@
       });
       const line = lyr.lines[idx];
       updateStagePhase(idx);
+      updateCash(idx, force);
       if (!force && line && /shoot|photo/i.test(line.el.textContent)) flashBurst();
       if (!force && line && /diamond/i.test(line.el.textContent)) {
         const next = lyr.lines[idx + 1];

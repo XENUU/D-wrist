@@ -42,6 +42,7 @@ const TRACKS = [
     id: "lucia",
     title: "LUCIA",
     artist: "D-wrist",
+    mood: "vice",
     cover: "covers/lucia.jpg",
     audio: "audio/lucia.wav",
     lyrics: `
@@ -89,7 +90,7 @@ const TRACKS = [
     id: "i-hate-being-in-love",
     title: "I HATE BEING IN LOVE",
     artist: "D-wrist",
-    mood: "lipstick", // ambiance du lecteur : "lipstick" ou "stage" (sans = gris)
+    mood: "lipstick", // ambiance du lecteur : "lipstick", "stage" ou "vice" (sans = gris)
     cover: "covers/i-hate-being-in-love.jpg?v=2",
     audio: "audio/i-hate-being-in-love.wav",
     lyrics: `
