@@ -43,7 +43,7 @@ const TRACKS = [
     title: "LUCIA",
     artist: "D-wrist",
     mood: "vice",
-    cover: "covers/lucia.jpg",
+    cover: "covers/lucia.jpg?v=2",
     audio: "audio/lucia.wav",
     lyrics: `
 [00:00.00]♪
