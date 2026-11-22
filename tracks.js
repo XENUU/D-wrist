@@ -300,6 +300,24 @@ const TRACKS = [
 [01:43.38]Sinon comment tu veux gagner (huh)
 [01:45.43]Comment tu veux faire (huh, huh, yah)
 `
+  },
+  {
+    id: "maggie",
+    title: "Maggie",
+    artist: "D-wrist",
+    cover: "covers/maggie.jpg",
+    audio: "audio/maggie.wav",
+    lyrics: `
+`
+  },
+  {
+    id: "jumpshot",
+    title: "JUMP$000T",
+    artist: "D-wrist",
+    cover: "covers/jumpshot.jpg",
+    audio: "audio/jumpshot.wav",
+    lyrics: `
+`
   }
 
   /* ---- MODÈLE À COPIER-COLLER (retire les deux lignes de tirets) ------

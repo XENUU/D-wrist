@@ -65,14 +65,48 @@
     beams: document.querySelectorAll('.bw'),
     bloom: $('#bloom'),
     toast: $('#toast'),
+
+    album: $('#album'),
+    albumScroll: $('#albumScroll'),
+    albumArt: $('#albumArt'),
+    albumTitle: $('#albumTitle'),
+    albumSub: $('#albumSub'),
+    albumPlay: $('#albumPlay'),
+    albumEdit: $('#albumEdit'),
+    albumTools: $('#albumTools'),
+    albumStatus: $('#albumStatus'),
+    albumReset: $('#albumReset'),
+    albumExport: $('#albumExport'),
+    albumLock: $('#albumLock'),
+    tracklist: $('#tracklist'),
+    tracklistOut: $('#tracklistOut'),
+    albumOut: $('#albumOut'),
+    lock: $('#lock'),
+    lockForm: $('#lockForm'),
+    lockInput: $('#lockInput'),
+    lockCancel: $('#lockCancel'),
+    mini: $('#mini'),
+    miniProgress: $('#miniProgress'),
+    miniFill: $('#miniFill'),
+    miniCover: $('#miniCover'),
+    miniTitle: $('#miniTitle'),
+    miniTime: $('#miniTime'),
+    miniPrev: $('#miniPrev'),
+    miniPlay: $('#miniPlay'),
+    miniNext: $('#miniNext'),
+    miniLyrics: $('#miniLyrics'),
+    miniRepeat: $('#miniRepeat'),
   };
 
   const audio = dom.audio;
 
   // État global de l'application
   const state = {
-    view: null,              // 'home' | 'player'
+    view: null,              // 'home' | 'album' | 'player'
     current: -1,             // index du morceau chargé dans le lecteur
+    queue: null,             // ordre de lecture (index) ; null = ordre du carrousel
+    fromMini: false,         // paroles ouvertes depuis le mini-lecteur (ne relance pas la lecture)
+    repeat: 'off',           // album : 'off' (s'arrête à la fin) | 'all' (recommence) | 'one' (boucle le morceau)
     navigatedFromHome: false,// vrai si on est arrivé sur le lecteur depuis le carrousel
     booted: false,
   };
@@ -341,6 +375,7 @@
   function openTrack(i) {
     const track = TRACK_LIST[i];
     if (!track) return;
+    state.queue = null; // depuis le carrousel : on enchaîne dans l'ordre du carrousel
     state.navigatedFromHome = true;
     location.hash = encodeURIComponent(track.id); // → hashchange → route()
   }
@@ -485,6 +520,7 @@
       renderProgress(0);
       dom.timeTotal.textContent = '0:00';
       updateMediaSession(track);
+      updateMini();
     }
 
     document.title = `${track.title} — ${track.artist || 'D-wrist'}`;
@@ -798,11 +834,31 @@
   /** Morceau précédent / suivant (boucle sur la liste) */
   function changeTrack(delta, autoplay = !audio.paused) {
     if (!TRACK_LIST.length) return;
-    const j = (state.current + delta + TRACK_LIST.length) % TRACK_LIST.length;
+    // Lancé depuis l'album → on suit la tracklist ; sinon l'ordre du carrousel
+    let q = state.queue || TRACK_LIST.map((_, k) => k);
+    let pos = q.indexOf(state.current);
+    if (pos < 0) { q = TRACK_LIST.map((_, k) => k); pos = state.current; }
+    const j = q[(pos + delta + q.length) % q.length];
+    // Sur l'album, le mini-lecteur change de morceau sans ouvrir les paroles
+    if (state.view !== 'player') { loadTrack(j, { autoplay }); return; }
     animateHeadSwap(delta);
     loadTrack(j, { autoplay });
     // On remplace l'entrée d'historique : le bouton retour ramène toujours au carrousel
     location.replace('#' + encodeURIComponent(TRACK_LIST[j].id));
+  }
+
+  /** Fin d'un morceau : enchaîne, en respectant le mode « répéter » de l'album */
+  function onEnded() {
+    if (!state.queue) { changeTrack(1, true); return; } // carrousel : boucle comme avant
+    if (state.repeat === 'one') { audio.currentTime = 0; play(); return; }
+    const last = state.queue.indexOf(state.current) === state.queue.length - 1;
+    if (last && state.repeat === 'off') {
+      // Fin de l'album : retour au 1er titre, en pause (comme Spotify)
+      loadTrack(state.queue[0], { autoplay: false });
+      if (state.view === 'player') location.replace('#' + encodeURIComponent(TRACK_LIST[state.queue[0]].id));
+      return;
+    }
+    changeTrack(1, true);
   }
 
   function previous() {
@@ -820,6 +876,8 @@
     const playing = !audio.paused;
     dom.playBtn.classList.toggle('is-playing', playing);
     dom.playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Lecture');
+    dom.miniPlay.classList.toggle('is-playing', playing);
+    dom.miniPlay.setAttribute('aria-label', playing ? 'Pause' : 'Lecture');
   }
 
   /** Met à jour la barre de progression (transform uniquement) */
@@ -828,10 +886,13 @@
     const ratio = isFinite(d) && d > 0 ? clamp(t / d, 0, 1) : 0;
     dom.progressFill.style.transform = `scaleX(${ratio.toFixed(5)})`;
     dom.progressThumb.style.transform = `translateX(${(ratio * 100).toFixed(3)}%)`;
+    dom.miniFill.style.transform = `scaleX(${ratio.toFixed(5)})`;
     const text = formatTime(t);
     if (text !== lastTimeText) {
       lastTimeText = text;
       dom.timeCurrent.textContent = text;
+      dom.miniTime.textContent = `${text} / ${formatTime(d)}`;
+      dom.miniProgress.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
       dom.progress.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
       dom.progress.setAttribute('aria-valuetext', text);
     }
@@ -891,9 +952,10 @@
     audio.addEventListener('seeked', () => syncUI(true));
     audio.addEventListener('durationchange', () => {
       dom.timeTotal.textContent = formatTime(audio.duration);
+      lastTimeText = ''; // rafraîchit aussi la durée du mini-lecteur
       syncUI(true);
     });
-    audio.addEventListener('ended', () => changeTrack(1, true)); // enchaîne
+    audio.addEventListener('ended', onEnded);
     audio.addEventListener('error', () => {
       const track = TRACK_LIST[state.current];
       if (track && track.audio && audio.getAttribute('src')) {
@@ -1188,7 +1250,9 @@
     state.view = 'player';
     document.body.classList.add('is-player');
 
-    loadTrack(i, { autoplay: animate });
+    // Paroles ouvertes depuis le mini-lecteur : on garde l'état lecture / pause
+    loadTrack(i, { autoplay: animate && !state.fromMini });
+    state.fromMini = false;
     dom.player.hidden = false;
     startShow(); // retour sur le lecteur pendant la lecture
     resumeAutoScroll();
@@ -1197,6 +1261,7 @@
     // Arrivée directe par lien (#slug) : simple fondu, pas de FLIP
     if (!animate || !fromHome) {
       dom.home.hidden = true;
+      dom.album.hidden = true;
       const anims = revealAnims([dom.backBtn, dom.playerHead, dom.lyrics, dom.controls], 60);
       runTransition(anims, () => {});
       return;
@@ -1247,12 +1312,15 @@
     document.body.classList.remove('is-player');
     document.title = 'D-wrist';
 
+    const fromAlbum = !dom.album.hidden;
+    dom.album.hidden = true;
     dom.home.hidden = false;
     layoutCarousel();
     jumpTo(state.current >= 0 ? state.current : car.pos);
 
     if (!animate || !fromPlayer || state.current < 0 || !car.items[state.current]) {
       dom.player.hidden = true;
+      if (animate && fromAlbum) runTransition([fadeIn(dom.home)], () => {});
       return;
     }
 
@@ -1302,6 +1370,479 @@
   }
 
   /* ========================================================================
+     5 bis. VUE ALBUM : tracklist verticale, ordre modifiable
+     ------------------------------------------------------------------------
+     La version publique vient de album.js. Après « Modifier » + mot de passe,
+     on réordonne (glisser la poignée), on retire / ajoute des morceaux et on
+     renomme l'album. Tout est gardé en brouillon dans ce navigateur
+     (localStorage) : les visiteurs voient toujours album.js. Pour publier,
+     « Enregistrer album.js » dans le dossier du site (ou télécharger).
+     Le mot de passe n'est pas écrit en clair : on compare son empreinte
+     SHA-256. Ce n'est qu'un verrou d'interface (site statique), mais il ne
+     protège rien de sensible : la version publique ne change que par album.js.
+     ======================================================================== */
+
+  const ALBUM_SLUG = 'album';
+  const ALBUM_SALT = 'd-wrist|';
+  const ALBUM_HASH = '45265f0605a7fcff5a9d21dbb9cf24878b735baadb48a111b6314a777cae25eb';
+  const ALBUM_DRAFT_KEY = 'dwrist-album-draft';
+  const ALBUM_UNLOCK_KEY = 'dwrist-album-unlocked';
+
+  const trackIndex = (id) => TRACK_LIST.findIndex((t) => t.id === id);
+  const validIds = (ids) => (Array.isArray(ids) ? ids : [])
+    .filter((id, k, arr) => trackIndex(id) >= 0 && arr.indexOf(id) === k);
+
+  const published = (() => {
+    const src = (typeof ALBUM !== 'undefined' && ALBUM) || {};
+    return {
+      title: String(src.title || 'Album'),
+      tracks: src.tracks ? validIds(src.tracks) : TRACK_LIST.map((t) => t.id),
+    };
+  })();
+
+  const album = {
+    data: null,       // { title, tracks } affiché (brouillon ou publié)
+    editing: false,
+    drag: null,
+  };
+
+  function readDraft() {
+    try {
+      const d = JSON.parse(localStorage.getItem(ALBUM_DRAFT_KEY));
+      if (d && Array.isArray(d.tracks)) return { title: String(d.title || published.title), tracks: validIds(d.tracks) };
+    } catch (_) { /* pas de brouillon */ }
+    return null;
+  }
+
+  const sameAlbum = (a, b) => a.title === b.title && a.tracks.join('|') === b.tracks.join('|');
+  const isDraft = () => !sameAlbum(album.data, published);
+
+  function saveDraft() {
+    try {
+      if (isDraft()) localStorage.setItem(ALBUM_DRAFT_KEY, JSON.stringify(album.data));
+      else localStorage.removeItem(ALBUM_DRAFT_KEY);
+    } catch (_) { /* stockage indisponible : le brouillon vit le temps de la page */ }
+  }
+
+  function isUnlocked() {
+    try { return sessionStorage.getItem(ALBUM_UNLOCK_KEY) === '1'; } catch (_) { return false; }
+  }
+
+  async function checkPassword(pw) {
+    if (!window.crypto || !crypto.subtle) return false;
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ALBUM_SALT + pw));
+    const hex = Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
+    return hex === ALBUM_HASH;
+  }
+
+  /* ---------- Rendu ---------- */
+
+  function albumArt() {
+    const ids = album.data.tracks.slice(0, 4);
+    dom.albumArt.textContent = '';
+    dom.albumArt.classList.toggle('is-grid', ids.length >= 4);
+    (ids.length >= 4 ? ids : ids.slice(0, 1)).forEach((id) => {
+      const img = new Image();
+      img.alt = '';
+      img.decoding = 'async';
+      setCover(img, TRACK_LIST[trackIndex(id)]);
+      dom.albumArt.appendChild(img);
+    });
+  }
+
+  function trackRow(id, n, out) {
+    const track = TRACK_LIST[trackIndex(id)];
+    const li = document.createElement('li');
+    li.className = 'tl-row';
+    li.dataset.id = id;
+    if (trackIndex(id) === state.current) li.classList.add('is-current');
+
+    const num = document.createElement('span');
+    num.className = 'tl-num';
+    num.textContent = out ? '–' : String(n);
+
+    const img = new Image();
+    img.className = 'tl-cover';
+    img.alt = '';
+    img.loading = 'lazy';
+    setCover(img, track);
+
+    const meta = document.createElement('span');
+    meta.className = 'tl-meta';
+    const title = document.createElement('span');
+    title.className = 'tl-title';
+    title.textContent = track.title;
+    const artist = document.createElement('span');
+    artist.className = 'tl-artist';
+    artist.textContent = track.artist || 'D-wrist';
+    meta.append(title, artist);
+
+    li.append(num, img, meta);
+
+    if (album.editing) {
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'tl-toggle';
+      toggle.dataset.action = out ? 'add' : 'remove';
+      toggle.setAttribute('aria-label', out ? `Ajouter ${track.title}` : `Retirer ${track.title}`);
+      toggle.innerHTML = out
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg>';
+      li.appendChild(toggle);
+
+      if (!out) {
+        const handle = document.createElement('button');
+        handle.type = 'button';
+        handle.className = 'tl-handle';
+        handle.setAttribute('aria-label', `Déplacer ${track.title} (flèches haut / bas)`);
+        handle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14"/></svg>';
+        li.appendChild(handle);
+      }
+    }
+    return li;
+  }
+
+  function albumSubText() {
+    const n = album.data.tracks.length;
+    return `D-wrist · ${n} titre${n > 1 ? 's' : ''}` + (isDraft() ? ' · brouillon' : '');
+  }
+
+  function renderAlbum() {
+    if (!album.data) album.data = readDraft() || { ...published, tracks: [...published.tracks] };
+    const { title, tracks } = album.data;
+    const draft = isDraft();
+
+    document.body.classList.toggle('is-editing', album.editing);
+    dom.albumTitle.textContent = title;
+    dom.albumTitle.contentEditable = album.editing ? 'true' : 'false';
+    dom.albumTitle.spellcheck = false;
+    dom.albumSub.textContent = albumSubText();
+    dom.albumEdit.hidden = album.editing;
+    dom.albumTools.hidden = !album.editing;
+    dom.albumStatus.textContent = draft
+      ? 'Brouillon : visible seulement sur cet appareil. « Enregistrer album.js » dans le dossier du site pour le mettre en ligne.'
+      : 'Identique à la version en ligne. Glisse les ≡ pour changer l’ordre.';
+    dom.albumReset.disabled = !draft;
+    albumArt();
+
+    dom.tracklist.textContent = '';
+    tracks.forEach((id, k) => dom.tracklist.appendChild(trackRow(id, k + 1, false)));
+
+    const outIds = TRACK_LIST.map((t) => t.id).filter((id) => !tracks.includes(id));
+    dom.tracklistOut.textContent = '';
+    outIds.forEach((id) => dom.tracklistOut.appendChild(trackRow(id, 0, true)));
+    dom.albumOut.hidden = !album.editing || !outIds.length;
+  }
+
+  function commitAlbum() {
+    saveDraft();
+    renderAlbum();
+  }
+
+  /* ---------- Navigation ---------- */
+
+  function fadeIn(el) {
+    return el.animate(
+      [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }],
+      { duration: 600 * MOTION, easing: EASE, fill: 'both' }
+    );
+  }
+
+  function showAlbum(animate) {
+    settleTransition();
+    state.view = 'album';
+    state.navigatedFromHome = false;
+    document.body.classList.remove('is-player');
+    renderAlbum();
+    updateMini();
+    document.title = `${album.data.title} — D-wrist`;
+    dom.home.hidden = true;
+    dom.player.hidden = true;
+    dom.album.hidden = false;
+    if (animate) runTransition([fadeIn(dom.album)], () => {});
+  }
+
+  /** Lance un morceau dans le mini-lecteur, sans quitter la tracklist */
+  function playFromAlbum(id) {
+    const i = trackIndex(id);
+    if (i < 0) return;
+    state.queue = album.data.tracks.map(trackIndex);
+    if (i === state.current && !audio.paused) return;
+    loadTrack(i, { autoplay: true });
+    document.title = `${album.data.title} — D-wrist`;
+  }
+
+  /* ---------- Mini-lecteur ---------- */
+
+  function updateMini() {
+    const track = TRACK_LIST[state.current];
+    const show = !!track;
+    dom.mini.hidden = !show;
+    document.body.classList.toggle('has-mini', show);
+    if (!track) return;
+    setCover(dom.miniCover, track);
+    dom.miniTitle.textContent = track.title;
+    dom.tracklist.querySelectorAll('.tl-row').forEach((li) =>
+      li.classList.toggle('is-current', li.dataset.id === track.id));
+  }
+
+  function openLyrics() {
+    const track = TRACK_LIST[state.current];
+    if (!track) return;
+    state.fromMini = true;
+    state.navigatedFromHome = true; // le bouton retour du lecteur ramène à l'album
+    location.hash = encodeURIComponent(track.id);
+  }
+
+  const REPEAT_KEY = 'dwrist-repeat';
+  const REPEAT_LABEL = { off: 'non', all: 'l\u2019album', one: 'ce morceau' };
+
+  function renderRepeat() {
+    dom.miniRepeat.dataset.mode = state.repeat;
+    dom.miniRepeat.setAttribute('aria-label', `Répéter : ${REPEAT_LABEL[state.repeat]}`);
+    dom.miniRepeat.title = `Répéter : ${REPEAT_LABEL[state.repeat]}`;
+  }
+
+  function initMini() {
+    try { const r = localStorage.getItem(REPEAT_KEY); if (REPEAT_LABEL[r]) state.repeat = r; } catch (_) { /* rien */ }
+    renderRepeat();
+    dom.miniRepeat.addEventListener('click', () => {
+      state.repeat = { off: 'all', all: 'one', one: 'off' }[state.repeat];
+      try { localStorage.setItem(REPEAT_KEY, state.repeat); } catch (_) { /* rien */ }
+      renderRepeat();
+      toast(`Répéter : ${REPEAT_LABEL[state.repeat]}`);
+    });
+    dom.miniPlay.addEventListener('click', togglePlay);
+    dom.miniPrev.addEventListener('click', previous);
+    dom.miniNext.addEventListener('click', () => changeTrack(1));
+    dom.miniLyrics.addEventListener('click', openLyrics);
+
+    // Barre de progression : clic ou glisser pour se déplacer
+    const ratioAt = (e) => {
+      const r = dom.miniProgress.getBoundingClientRect();
+      return clamp((e.clientX - r.left) / r.width, 0, 1);
+    };
+    let dragging = false;
+    const seekTo = (e) => {
+      if (!isFinite(audio.duration) || audio.duration <= 0) return;
+      audio.currentTime = ratioAt(e) * audio.duration;
+      syncUI(true);
+    };
+    dom.miniProgress.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      try { dom.miniProgress.setPointerCapture(e.pointerId); } catch (_) { /* rien */ }
+      seekTo(e);
+    });
+    dom.miniProgress.addEventListener('pointermove', (e) => { if (dragging) seekTo(e); });
+    const end = () => { dragging = false; };
+    dom.miniProgress.addEventListener('pointerup', end);
+    dom.miniProgress.addEventListener('pointercancel', end);
+    dom.miniProgress.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); seekBy(5); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); seekBy(-5); }
+    });
+  }
+
+  /* ---------- Édition ---------- */
+
+  function startEditing() {
+    album.editing = true;
+    renderAlbum();
+  }
+
+  function openLock() {
+    dom.lock.hidden = false;
+    dom.lockInput.value = '';
+    dom.lockForm.classList.remove('is-wrong');
+    setTimeout(() => dom.lockInput.focus(), 30);
+  }
+
+  function closeLock() {
+    dom.lock.hidden = true;
+  }
+
+  function moveTrack(id, delta) {
+    const list = album.data.tracks;
+    const k = list.indexOf(id);
+    const j = k + delta;
+    if (k < 0 || j < 0 || j >= list.length) return;
+    list.splice(j, 0, list.splice(k, 1)[0]);
+    commitAlbum();
+    const h = dom.tracklist.querySelector(`[data-id="${CSS.escape(id)}"] .tl-handle`);
+    if (h) h.focus();
+  }
+
+  async function exportAlbum() {
+    const { title, tracks } = album.data;
+    const head =
+      '/* D-wrist — Tracklist de l\'album (vue « Album »)\n' +
+      '   Généré depuis le site (Modifier → Enregistrer album.js).\n' +
+      '   - title  : nom de l\'album\n' +
+      '   - tracks : les « id » des morceaux (voir tracks.js), dans l\'ordre.\n' +
+      '              Un morceau absent de la liste n\'apparaît pas dans l\'album. */\n\n';
+    const body = 'const ALBUM = {\n' +
+      `  title: ${JSON.stringify(title)},\n` +
+      '  tracks: [\n' + tracks.map((id) => `    ${JSON.stringify(id)}`).join(',\n') + '\n  ]\n};\n';
+    const blob = new Blob([head + body], { type: 'text/javascript' });
+
+    // Chrome / Edge : on choisit où enregistrer → directement dans le dossier du site
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: 'album.js',
+          id: 'dwrist-site',
+          types: [{ description: 'Tracklist', accept: { 'text/javascript': ['.js'] } }],
+        });
+        const w = await handle.createWritable();
+        await w.write(blob);
+        await w.close();
+        toast(`${handle.name} enregistré`);
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return; // fenêtre annulée
+        // sinon : on retombe sur le téléchargement classique
+      }
+    }
+
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'album.js';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast('album.js téléchargé');
+  }
+
+  /* Glisser-déposer à la poignée (souris + tactile) */
+  function onDragStart(e) {
+    const handle = e.target.closest('.tl-handle');
+    if (!handle || e.button > 0) return;
+    e.preventDefault();
+    const li = handle.closest('.tl-row');
+    handle.setPointerCapture(e.pointerId);
+    album.drag = { li, handle, startY: e.clientY, pointerId: e.pointerId };
+    li.classList.add('is-dragging');
+  }
+
+  function onDragMove(e) {
+    const d = album.drag;
+    if (!d || e.pointerId !== d.pointerId) return;
+    let dy = e.clientY - d.startY;
+    const next = d.li.nextElementSibling;
+    const prev = d.li.previousElementSibling;
+    if (next && dy > next.offsetHeight / 2) {
+      dom.tracklist.insertBefore(next, d.li);
+      d.startY += next.offsetHeight;
+    } else if (prev && dy < -prev.offsetHeight / 2) {
+      dom.tracklist.insertBefore(d.li, prev);
+      d.startY -= prev.offsetHeight;
+    }
+    dy = e.clientY - d.startY;
+    d.li.style.transform = `translateY(${dy}px)`;
+
+    // Défilement auto près des bords
+    const box = dom.albumScroll.getBoundingClientRect();
+    if (e.clientY < box.top + 60) dom.albumScroll.scrollTop -= 8;
+    else if (e.clientY > box.bottom - 60) dom.albumScroll.scrollTop += 8;
+  }
+
+  function onDragEnd(e) {
+    const d = album.drag;
+    if (!d || e.pointerId !== d.pointerId) return;
+    album.drag = null;
+    d.li.classList.remove('is-dragging');
+    d.li.style.transform = '';
+    album.data.tracks = Array.from(dom.tracklist.children, (li) => li.dataset.id);
+    commitAlbum();
+  }
+
+  function initAlbum() {
+    initMini();
+    dom.albumPlay.addEventListener('click', () => {
+      if (album.data && album.data.tracks.length) playFromAlbum(album.data.tracks[0]);
+    });
+
+    dom.albumEdit.addEventListener('click', () => {
+      if (isUnlocked()) startEditing();
+      else openLock();
+    });
+
+    dom.lockCancel.addEventListener('click', closeLock);
+    dom.lock.addEventListener('click', (e) => { if (e.target === dom.lock) closeLock(); });
+    dom.lockInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLock(); });
+    dom.lockForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      let ok = false;
+      try { ok = await checkPassword(dom.lockInput.value); } catch (_) { ok = false; }
+      if (!ok) {
+        dom.lockForm.classList.remove('is-wrong');
+        void dom.lockForm.offsetWidth; // relance l'animation
+        dom.lockForm.classList.add('is-wrong');
+        dom.lockInput.select();
+        return;
+      }
+      try { sessionStorage.setItem(ALBUM_UNLOCK_KEY, '1'); } catch (_) { /* rien */ }
+      closeLock();
+      startEditing();
+    });
+
+    dom.albumLock.addEventListener('click', () => {
+      album.editing = false;
+      renderAlbum();
+    });
+
+    dom.albumReset.addEventListener('click', () => {
+      if (!confirm('Revenir à la tracklist en ligne ? Ton brouillon sera effacé.')) return;
+      album.data = { ...published, tracks: [...published.tracks] };
+      commitAlbum();
+    });
+
+    dom.albumExport.addEventListener('click', exportAlbum);
+
+    dom.albumTitle.addEventListener('input', () => {
+      album.data.title = dom.albumTitle.textContent.replace(/\s+/g, ' ').trim() || 'Album';
+      saveDraft();
+      dom.albumSub.textContent = albumSubText();
+    });
+    dom.albumTitle.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); dom.albumTitle.blur(); }
+    });
+    dom.albumTitle.addEventListener('blur', () => {
+      if (album.editing) renderAlbum();
+    });
+
+    // Clic sur une ligne : lecture (hors édition) ; boutons +/− en édition
+    const onListClick = (e) => {
+      const row = e.target.closest('.tl-row');
+      if (!row) return;
+      const btn = e.target.closest('.tl-toggle');
+      if (btn) {
+        const id = row.dataset.id;
+        if (btn.dataset.action === 'remove') album.data.tracks = album.data.tracks.filter((x) => x !== id);
+        else album.data.tracks.push(id);
+        commitAlbum();
+        return;
+      }
+      if (!album.editing) playFromAlbum(row.dataset.id);
+    };
+    dom.tracklist.addEventListener('click', onListClick);
+    dom.tracklistOut.addEventListener('click', onListClick);
+
+    dom.tracklist.addEventListener('pointerdown', onDragStart);
+    dom.tracklist.addEventListener('pointermove', onDragMove);
+    dom.tracklist.addEventListener('pointerup', onDragEnd);
+    dom.tracklist.addEventListener('pointercancel', onDragEnd);
+    dom.tracklist.addEventListener('keydown', (e) => {
+      const handle = e.target.closest('.tl-handle');
+      if (!handle) return;
+      const id = handle.closest('.tl-row').dataset.id;
+      if (e.key === 'ArrowUp') { e.preventDefault(); moveTrack(id, -1); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); moveTrack(id, 1); }
+    });
+  }
+
+  /* ========================================================================
      6. ROUTING PAR HASH + DÉMARRAGE
      ======================================================================== */
 
@@ -1314,7 +1855,9 @@
     const slug = currentSlug();
     const i = slug ? TRACK_LIST.findIndex((t) => t.id === slug) : -1;
 
-    if (i >= 0) {
+    if (slug === ALBUM_SLUG) {
+      if (state.view !== 'album') showAlbum(state.booted);
+    } else if (i >= 0) {
       if (state.view !== 'player') {
         showPlayer(i, state.booted);
       } else if (i !== state.current) {
@@ -1330,6 +1873,15 @@
   function initKeyboard() {
     document.addEventListener('keydown', (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.target.closest('input, textarea, [contenteditable="true"]')) return;
+      if (state.view === 'album') {
+        if (e.key === 'Escape' && dom.lock.hidden) location.hash = '';
+        if (e.code === 'Space' && state.current >= 0 && !e.target.closest('button, a')) {
+          e.preventDefault();
+          if (!e.repeat) togglePlay();
+        }
+        return;
+      }
 
       if (state.view === 'home') {
         if (e.key === 'ArrowRight') { e.preventDefault(); goTo(car.target + 1); hideHint(); }
@@ -1384,6 +1936,7 @@
     initResize();
     initMediaSession();
     dom.backBtn.addEventListener('click', goHome);
+    initAlbum();
 
     // Le logo (image ou police gothique) peut finir de charger après le
     // premier affichage : on recalcule alors la place disponible.
@@ -1395,7 +1948,7 @@
 
     // Premier affichage (sans animation FLIP)
     const slug = currentSlug();
-    if (slug && !TRACK_LIST.some((t) => t.id === slug)) {
+    if (slug && slug !== ALBUM_SLUG && !TRACK_LIST.some((t) => t.id === slug)) {
       // Lien vers un morceau inconnu → retour propre à l'accueil
       location.replace('#');
     }

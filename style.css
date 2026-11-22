@@ -682,6 +682,456 @@ body.is-player .backdrop { opacity: 0.75; }
 .toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
 
 /* ==========================================================================
+   VUE ALBUM : tracklist verticale (ordre modifiable avec mot de passe)
+   ========================================================================== */
+
+/* Bascule carrousel ↔ album, en bas à droite */
+.view-switch {
+  position: absolute;
+  right: calc(var(--safe-r) + 16px);
+  bottom: calc(var(--safe-b) + 14px);
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px 8px 11px;
+  border-radius: 999px;
+  background: rgba(18, 18, 18, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--fg-soft);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: color 0.3s var(--ease), background 0.3s var(--ease);
+}
+.view-switch:hover { color: var(--fg); background: rgba(30, 30, 30, 0.85); }
+.view-switch svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.album-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding:
+    calc(var(--safe-t) + clamp(28px, 6vh, 64px))
+    calc(var(--safe-r) + 18px)
+    calc(var(--safe-b) + 90px)
+    calc(var(--safe-l) + 18px);
+}
+.album-scroll > * { max-width: 760px; margin-left: auto; margin-right: auto; }
+
+/* ---------- En-tête : pochette + titre ---------- */
+.album-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 26px;
+  text-align: center;
+}
+.album-art {
+  width: min(62vw, 270px);
+  aspect-ratio: 1;
+  flex: none;
+  border-radius: var(--cover-radius);
+  overflow: hidden;
+  background: #151515;
+  box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.album-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.album-art.is-grid { display: grid; grid-template-columns: 1fr 1fr; }
+
+.album-kicker {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.album-title {
+  margin-top: 6px;
+  font-size: clamp(2rem, 8vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.album-sub { margin-top: 8px; font-size: 0.86rem; color: var(--muted); }
+
+.album-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+.album-play {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--fg);
+  color: #0a0a0a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 30px -12px rgba(0, 0, 0, 0.9);
+  transition: transform 0.3s var(--ease);
+}
+.album-play:hover { transform: scale(1.05); }
+.album-play svg { width: 22px; height: 22px; fill: currentColor; margin-left: 2px; }
+.album-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 15px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  color: var(--fg-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.album-edit:hover { color: var(--fg); }
+.album-edit svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* Titre modifiable en mode édition */
+.is-editing .album-title {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+  border-radius: 8px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.is-editing .album-title:focus { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); outline: none; }
+
+/* ---------- Barre d'édition ---------- */
+.album-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.album-status { font-size: 0.8rem; line-height: 1.45; color: var(--fg-soft); }
+.album-tools-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.album-tools-btns button,
+.lock-btns button {
+  padding: 9px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--fg-soft);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+.album-tools-btns button:disabled { opacity: 0.35; cursor: default; }
+.album-tools-btns .is-main,
+.lock-btns .is-main { background: var(--fg); color: #0a0a0a; box-shadow: none; }
+
+/* ---------- Liste des morceaux ---------- */
+.tracklist { list-style: none; }
+.tl-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px 48px 1fr auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.25s var(--ease);
+}
+.tl-row:hover { background: rgba(255, 255, 255, 0.05); }
+.is-editing .tl-row { cursor: default; }
+.tl-num {
+  text-align: center;
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.tl-cover {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #151515;
+}
+.tl-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tl-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tl-artist { font-size: 0.8rem; color: var(--muted); }
+
+/* Morceau chargé dans le lecteur */
+.tl-row.is-current .tl-num { font-size: 0; }
+.tl-row.is-current .tl-num::after { content: "♪"; font-size: 1rem; color: var(--fg); }
+
+.tl-toggle,
+.tl-handle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--muted);
+}
+.tl-toggle:hover,
+.tl-handle:hover { color: var(--fg); background: rgba(255, 255, 255, 0.06); }
+.tl-toggle svg,
+.tl-handle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.tl-handle { touch-action: none; cursor: grab; }
+.tl-row.is-dragging {
+  z-index: 2;
+  background: rgba(40, 40, 40, 0.95);
+  box-shadow: 0 18px 40px -14px rgba(0, 0, 0, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  transition: none;
+}
+.tl-row.is-dragging .tl-handle { cursor: grabbing; }
+
+.album-out { margin-top: 26px; }
+.album-out-label {
+  margin: 0 auto 8px;
+  padding-left: 10px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.tracklist--out .tl-row { opacity: 0.55; }
+.tracklist--out .tl-row:hover { opacity: 0.85; }
+
+/* ---------- Mini-lecteur (bas de la vue album) ---------- */
+.mini {
+  position: absolute;
+  left: calc(var(--safe-l) + 10px);
+  right: calc(var(--safe-r) + 10px);
+  bottom: calc(var(--safe-b) + 10px);
+  z-index: 5;
+  max-width: 760px;
+  margin: 0 auto;
+  border-radius: 16px;
+  background: rgba(22, 22, 22, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 24px 50px -18px #000;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  overflow: hidden;
+  animation: mini-in 0.5s var(--ease);
+}
+@keyframes mini-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+/* Barre fine en haut, zone de clic plus haute que le trait */
+.mini-progress {
+  position: relative;
+  height: 14px;
+  margin-bottom: -10px;
+  cursor: pointer;
+  touch-action: none;
+}
+.mini-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.mini-fill {
+  height: 100%;
+  background: var(--fg);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+.mini-progress:hover .mini-rail { height: 5px; }
+
+.mini-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 10px;
+}
+.mini-cover {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 7px;
+  object-fit: cover;
+  background: #151515;
+}
+.mini-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.mini-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mini-time { font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.mini-btns { display: flex; align-items: center; gap: 2px; flex: none; }
+.mini-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+}
+.mini-btn svg { width: 18px; height: 18px; fill: currentColor; }
+.mini-btn--side { color: var(--fg-soft); }
+.mini-btn--side:hover { color: var(--fg); }
+.mini-btn--play { width: 42px; height: 42px; background: var(--fg); color: #0a0a0a; }
+.mini-btn--play svg { width: 18px; height: 18px; }
+.mini-btn--play .i-pause,
+.mini-btn--play.is-playing .i-play { display: none; }
+.mini-btn--play.is-playing .i-pause { display: block; }
+/* Répéter : gris (non), blanc + point (album), blanc + « 1 » (morceau) */
+.mini-repeat { position: relative; color: var(--faint); }
+.mini-repeat svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.mini-repeat[data-mode="all"],
+.mini-repeat[data-mode="one"] { color: var(--fg); }
+.mini-repeat[data-mode="all"]::after,
+.mini-repeat[data-mode="one"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.mini-repeat-one {
+  display: none;
+  position: absolute;
+  top: 5px;
+  right: 4px;
+  min-width: 13px;
+  height: 13px;
+  border-radius: 7px;
+  background: var(--fg);
+  color: #0a0a0a;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 13px;
+  text-align: center;
+}
+.mini-repeat[data-mode="one"] .mini-repeat-one { display: block; }
+
+.mini-lyrics {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  color: var(--fg-soft);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+.mini-lyrics:hover { color: var(--fg); }
+.mini-lyrics svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* Mini-lecteur visible : on libère la place en bas */
+.has-mini .view--album .view-switch { bottom: calc(var(--safe-b) + 92px); }
+.has-mini .album-scroll { padding-bottom: calc(var(--safe-b) + 160px); }
+
+@media (max-width: 420px) {
+  .mini-lyrics span { display: none; }       /* icône seule sur petit écran */
+  .mini-lyrics { padding: 9px; margin-left: 2px; }
+  .mini-row { gap: 10px; }
+}
+
+/* ---------- Fenêtre mot de passe ---------- */
+.lock {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.62);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.lock-box {
+  width: min(100%, 340px);
+  padding: 22px;
+  border-radius: 18px;
+  background: #121212;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 30px 80px -20px #000;
+}
+.lock-title { font-weight: 700; margin-bottom: 14px; }
+.lock-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: var(--fg);
+  font: inherit;
+  font-size: 16px;            /* évite le zoom auto sur iOS */
+  -webkit-user-select: text;
+  user-select: text;
+}
+.lock-input:focus { outline: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45); }
+.lock-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.lock-box.is-wrong { animation: shake 0.4s var(--ease); }
+.lock-box.is-wrong .lock-input { box-shadow: inset 0 0 0 1px rgba(255, 90, 90, 0.7); }
+@keyframes shake {
+  20%, 60% { transform: translateX(-7px); }
+  40%, 80% { transform: translateX(7px); }
+}
+
+@media (min-width: 700px) {
+  .album-head { flex-direction: row; align-items: flex-end; text-align: left; gap: 30px; }
+  .album-art { width: 230px; }
+  .album-actions { justify-content: flex-start; }
+}
+
+/* ==========================================================================
    RESPONSIVE (mobile d'abord → on agrandit ensuite)
    ========================================================================== */
 
