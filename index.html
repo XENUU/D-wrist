@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261122">
 </head>
 <body>
 
@@ -233,9 +233,10 @@
   <!-- Un seul lecteur audio, qui ne précharge que les métadonnées -->
   <audio id="audio" preload="metadata"></audio>
 
-  <!-- Données d'abord, puis le script principal (pas de fetch : marche en file://) -->
-  <script src="tracks.js"></script>
-  <script src="album.js"></script>
-  <script src="script.js"></script>
+  <!-- Données d'abord, puis le script principal (pas de fetch : marche en file://).
+       ?v=… force les téléphones à recharger les fichiers après une mise à jour. -->
+  <script src="tracks.js?v=20261122"></script>
+  <script src="album.js?v=20261122"></script>
+  <script src="script.js?v=20261122"></script>
 </body>
 </html>
