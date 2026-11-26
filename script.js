@@ -35,8 +35,8 @@
     captionTitle: $('#captionTitle'),
     captionArtist: $('#captionArtist'),
     hint: $('#hint'),
-    logo: $('.logo'),
-    logoImg: $('.logo-img'),
+    logo: $('#home .logo'),
+    logoImg: $('#home .logo-img'),
 
     player: $('#player'),
     backBtn: $('#backBtn'),
@@ -65,6 +65,11 @@
     beams: document.querySelectorAll('.bw'),
     bloom: $('#bloom'),
     toast: $('#toast'),
+
+    menu: $('#menu'),
+    menuAlbumVis: $('#menuAlbumVis'),
+    menuAlbumMeta: $('#menuAlbumMeta'),
+    menuCarVis: $('#menuCarVis'),
 
     album: $('#album'),
     albumScroll: $('#albumScroll'),
@@ -102,7 +107,7 @@
 
   // État global de l'application
   const state = {
-    view: null,              // 'home' | 'album' | 'player'
+    view: null,              // 'menu' | 'home' | 'album' | 'player'
     current: -1,             // index du morceau chargé dans le lecteur
     queue: null,             // ordre de lecture (index) ; null = ordre du carrousel
     fromMini: false,         // paroles ouvertes depuis le mini-lecteur (ne relance pas la lecture)
@@ -1249,6 +1254,7 @@
     const fromHome = state.view === 'home';
     state.view = 'player';
     document.body.classList.add('is-player');
+    dom.menu.hidden = true;
 
     // Paroles ouvertes depuis le mini-lecteur : on garde l'état lecture / pause
     loadTrack(i, { autoplay: animate && !state.fromMini });
@@ -1312,8 +1318,9 @@
     document.body.classList.remove('is-player');
     document.title = 'D-wrist';
 
-    const fromAlbum = !dom.album.hidden;
+    const fromAlbum = !dom.album.hidden || !dom.menu.hidden;
     dom.album.hidden = true;
+    dom.menu.hidden = true;
     dom.home.hidden = false;
     layoutCarousel();
     jumpTo(state.current >= 0 ? state.current : car.pos);
@@ -1383,6 +1390,7 @@
      ======================================================================== */
 
   const ALBUM_SLUG = 'album';
+  const HOME_SLUG = 'decouvrir';  // carrousel (la racine affiche le menu de choix)
   const ALBUM_SALT = 'd-wrist|';
   const ALBUM_HASH = '45265f0605a7fcff5a9d21dbb9cf24878b735baadb48a111b6314a777cae25eb';
   const ALBUM_DRAFT_KEY = 'dwrist-album-draft';
@@ -1558,8 +1566,50 @@
     document.title = `${album.data.title} — D-wrist`;
     dom.home.hidden = true;
     dom.player.hidden = true;
+    dom.menu.hidden = true;
     dom.album.hidden = false;
     if (animate) runTransition([fadeIn(dom.album)], () => {});
+  }
+
+  /* ---------- Menu d'accueil : choix Album / Carrousel ---------- */
+
+  function buildMenu() {
+    const add = (box, track) => {
+      if (!track) return;
+      const img = new Image();
+      img.alt = '';
+      img.decoding = 'async';
+      setCover(img, track);
+      box.appendChild(img);
+    };
+    // Album : vinyle qui sort de la pochette (grille des 4 premiers titres)
+    const ids = published.tracks;
+    const vinyl = document.createElement('div');
+    vinyl.className = 'menu-vinyl';
+    const label = document.createElement('div');
+    label.className = 'menu-vinyl-label';
+    add(label, TRACK_LIST[trackIndex(ids[0])]);
+    vinyl.appendChild(label);
+    const grid = document.createElement('div');
+    grid.className = 'menu-art';
+    ids.slice(0, 4).forEach((id) => add(grid, TRACK_LIST[trackIndex(id)]));
+    dom.menuAlbumVis.append(vinyl, grid);
+    dom.menuAlbumMeta.textContent = `${published.title} · ${ids.length} titre${ids.length > 1 ? 's' : ''}`;
+    // Carrousel : les 3 premières covers en éventail
+    TRACK_LIST.slice(0, 3).forEach((t) => add(dom.menuCarVis, t));
+  }
+
+  function showMenu(animate) {
+    settleTransition();
+    state.view = 'menu';
+    state.navigatedFromHome = false;
+    document.body.classList.remove('is-player');
+    document.title = 'D-wrist';
+    dom.home.hidden = true;
+    dom.player.hidden = true;
+    dom.album.hidden = true;
+    dom.menu.hidden = false;
+    if (animate) runTransition([fadeIn(dom.menu)], () => {});
   }
 
   /** Lance un morceau dans le mini-lecteur, sans quitter la tracklist */
@@ -1855,7 +1905,9 @@
     const slug = currentSlug();
     const i = slug ? TRACK_LIST.findIndex((t) => t.id === slug) : -1;
 
-    if (slug === ALBUM_SLUG) {
+    if (!slug) {
+      if (state.view !== 'menu') showMenu(state.booted);
+    } else if (slug === ALBUM_SLUG) {
       if (state.view !== 'album') showAlbum(state.booted);
     } else if (i >= 0) {
       if (state.view !== 'player') {
@@ -1874,8 +1926,8 @@
     document.addEventListener('keydown', (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.target.closest('input, textarea, [contenteditable="true"]')) return;
+      if (state.view === 'menu') return;
       if (state.view === 'album') {
-        if (e.key === 'Escape' && dom.lock.hidden) location.hash = '';
         if (e.code === 'Space' && state.current >= 0 && !e.target.closest('button, a')) {
           e.preventDefault();
           if (!e.repeat) togglePlay();
@@ -1887,6 +1939,7 @@
         if (e.key === 'ArrowRight') { e.preventDefault(); goTo(car.target + 1); hideHint(); }
         else if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(car.target - 1); hideHint(); }
         else if (e.key === 'Enter' && !e.target.closest('a, button')) { e.preventDefault(); openTrack(car.active); }
+        else if (e.key === 'Escape') location.hash = '';
         return;
       }
 
@@ -1937,6 +1990,7 @@
     initMediaSession();
     dom.backBtn.addEventListener('click', goHome);
     initAlbum();
+    buildMenu();
 
     // Le logo (image ou police gothique) peut finir de charger après le
     // premier affichage : on recalcule alors la place disponible.
@@ -1948,13 +2002,13 @@
 
     // Premier affichage (sans animation FLIP)
     const slug = currentSlug();
-    if (slug && slug !== ALBUM_SLUG && !TRACK_LIST.some((t) => t.id === slug)) {
+    if (slug && slug !== ALBUM_SLUG && slug !== HOME_SLUG && !TRACK_LIST.some((t) => t.id === slug)) {
       // Lien vers un morceau inconnu → retour propre à l'accueil
       location.replace('#');
     }
     if (TRACK_LIST.length) jumpTo(0);
     route();
-    if (state.view === null) showHome(false);
+    if (state.view === null) showMenu(false);
     state.booted = true;
 
     window.addEventListener('hashchange', route);
